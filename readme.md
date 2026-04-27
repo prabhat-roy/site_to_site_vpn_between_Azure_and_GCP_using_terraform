@@ -1,13 +1,66 @@
-Site to site vpn between Azure and GCP using terraform.
+﻿# Site-to-Site VPN: Azure ↔ GCP (Terraform)
 
-Login to cli using az login command.
+IPsec tunnel between an Azure VNet and a GCP VPC, with a test VM in each cloud.
 
-Create a key pair using below command  and add the file path in vm.tf file (line number 9) to associate with vm.
+---
 
-ssh-keygen -m PEM -t rsa -b 2048
+## Architecture
 
-Create a service account in GCP and assign Compute Admin role, then create key and use that key to authenticate with GCP in terraform.tfvars file (line number 4).
+```
+Azure VNet (10.0.0.0/16)             GCP VPC (10.10.0.0/24)
+   |                                       |
+   +-- VM (10.0.x.x) <-- IPsec VPN -->    +-- VM (10.10.x.x)
+   |                                       |
+Azure VPN Gateway                      GCP HA VPN Gateway
+```
 
-Create a public and private keypair using ssh-keygen command and use the path in terraform.tfvars file (line number 15 & 16) to associate with vm.
+---
 
-Run terraform apply -auto-approve to create infrastructure in both Azure & GCP and login each vm to ping private ip of the other vm.
+## What gets created
+
+| Side | Resources | File |
+|------|-----------|------|
+| Azure | RG, VNet, GatewaySubnet, Public IP, VPN Gateway, Local Network Gateway, Connection, VM | `azure.tf`, `azure-vm.tf` |
+| GCP   | VPC, subnet, firewall, HA VPN Gateway, Peer VPN Gateway, tunnel, VM | `gcp.tf`, `gcp-vm.tf` |
+| Outputs | Tunnel IPs, VM public IPs | `output.tf` |
+
+---
+
+## Prerequisites
+
+1. Azure subscription, `az login` complete.
+2. GCP project + service account JSON (Compute Admin).
+3. SSH key pair generated locally for both VMs.
+4. Terraform >= 1.5.
+
+---
+
+## Configuration
+
+Edit `terraform.tfvars` — Azure region, GCP project/region, both CIDRs, both key paths.
+
+---
+
+## Deploy
+
+```bash
+terraform init
+terraform plan
+terraform apply -auto-approve
+```
+
+(Azure gateway provisioning is the slow leg — 30-45 min.)
+
+---
+
+## Verify
+
+SSH into one VM, ping the other side's private IP.
+
+---
+
+## Tear down
+
+```bash
+terraform destroy -auto-approve
+```
